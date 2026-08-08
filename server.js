@@ -8,6 +8,7 @@ app.use(express.json());
 
 const GEMINI_KEY = process.env.GEMINI_KEY;
 const GROQ_KEY = process.env.GROQ_KEY;
+const DEEPSEEK_KEY = process.env.DEEPSEEK_KEY;
 const PORTA = process.env.PORT || 3000;
 
 async function perguntarGemini(pergunta) {
@@ -27,12 +28,22 @@ async function perguntarGroq(pergunta) {
     return { ia: 'Groq (Llama 3)', resposta: resposta.data.choices[0].message.content };
 }
 
+async function perguntarDeepSeek(pergunta) {
+    const resposta = await axios.post(
+        'https://api.deepseek.com/v1/chat/completions',
+        { model: 'deepseek-chat', messages: [{ role: 'user', content: pergunta }], max_tokens: 2000 },
+        { headers: { 'Authorization': `Bearer ${DEEPSEEK_KEY}` } }
+    );
+    return { ia: 'DeepSeek', resposta: resposta.data.choices[0].message.content };
+}
+
 app.post('/api/gerar', async (req, res) => {
     try {
         const { pergunta } = req.body;
-        const [gemini, groq] = await Promise.all([
+        const [gemini, groq, deepseek] = await Promise.all([
             perguntarGemini(pergunta),
-            perguntarGroq(pergunta)
+            perguntarGroq(pergunta),
+            perguntarDeepSeek(pergunta)
         ]);
         
         let codigoRoblox = '';
@@ -57,18 +68,11 @@ parte.Position = Vector3.new(0, 5, 0)
 parte.Anchored = true
 parte.BrickColor = BrickColor.new("${cor}")
 parte.Material = Enum.Material.SmoothPlastic
-local h = Instance.new("Highlight")
-h.Parent = parte
-print("Parte criada!")
+print("Parte criada pelas 3 IAs!")
 `;
         }
         
-        res.json({
-            sucesso: true,
-            respostas: [gemini, groq],
-            codigoRoblox: codigoRoblox
-        });
-        
+        res.json({ sucesso: true, respostas: [gemini, groq, deepseek], codigoRoblox: codigoRoblox });
     } catch(erro) {
         res.status(500).json({ sucesso: false, erro: erro.message });
     }
